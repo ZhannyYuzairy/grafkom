@@ -1,167 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>3D Grafik Sederhana</title>
-  <style>
-    body {
-      text-align: center;
-      background-color: #f0f0f0;
-      font-family: sans-serif;
-    }
-    canvas {
-      background-color: white;
-      border: 1px solid #ccc;
-      margin-top: 20px;
-    }
-  </style>
+  <title>3D Rotating Box – Wireframe & Hidden Surface</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h2>3D Grafik Sederhana</h2>
-  <label for="mode">Pilih Mode:</label>
-  <select id="mode">
-    <option value="part1">PART 1 - Wireframe Lengkap</option>
-    <option value="part2">PART 2 - Garis Tersembunyi Disembunyikan</option>
-  </select>
-  <p>Gunakan tombol <strong>W, A, S, D</strong> untuk rotasi sumbu X dan Y.</p>
-  <canvas id="canvas" width="600" height="600"></canvas>
+  <h1>3D Box – Wireframe & Hidden Surfaces</h1>
 
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const modeSelect = document.getElementById('mode');
+  <canvas id="canvas" width="600" height="450"></canvas>
 
-    let angleX = 0;
-    let angleY = 0;
+  <div id="controls">
+    <button id="part1" class="active">Part 1: Wireframe</button>
+    <button id="part2">Part 2: Hidden Removed</button>
+  </div>
 
-    const points = [
-      {x: -100, y: -50, z: -50},
-      {x:  100, y: -50, z: -50},
-      {x:  100, y:  50, z: -50},
-      {x: -100, y:  50, z: -50},
-      {x: -100, y: -50, z:  50},
-      {x:  100, y: -50, z:  50},
-      {x:  100, y:  50, z:  50},
-      {x: -100, y:  50, z:  50},
-    ];
+  <p id="info">Gunakan tombol: <strong>A/D</strong> rotasi sumbu Y, <strong>W/S</strong> rotasi sumbu X.</p>
 
-    const edges = [
-      [0,1],[1,2],[2,3],[3,0],
-      [4,5],[5,6],[6,7],[7,4],
-      [0,4],[1,5],[2,6],[3,7],
-    ];
-
-    const faces = [
-      [0, 1, 2, 3], // belakang
-      [4, 5, 6, 7], // depan
-      [0, 1, 5, 4], // bawah
-      [2, 3, 7, 6], // atas
-      [1, 2, 6, 5], // kanan
-      [0, 3, 7, 4], // kiri
-    ];
-
-    function rotate(p, angleX, angleY) {
-      let x = p.x * Math.cos(angleY) - p.z * Math.sin(angleY);
-      let z = p.x * Math.sin(angleY) + p.z * Math.cos(angleY);
-      p.x = x;
-      p.z = z;
-
-      let y = p.y * Math.cos(angleX) - p.z * Math.sin(angleX);
-      z = p.y * Math.sin(angleX) + p.z * Math.cos(angleX);
-      p.y = y;
-      p.z = z;
-
-      return p;
-    }
-
-    function project(p) {
-      return {
-        x: p.x + canvas.width / 2,
-        y: -p.y + canvas.height / 2
-      };
-    }
-
-    function getNormal(face, rotated) {
-      const [a, b, c] = face;
-      const p1 = rotated[a], p2 = rotated[b], p3 = rotated[c];
-      const u = {x: p2.x - p1.x, y: p2.y - p1.y, z: p2.z - p1.z};
-      const v = {x: p3.x - p1.x, y: p3.y - p1.y, z: p3.z - p1.z};
-      return {
-        x: u.y * v.z - u.z * v.y,
-        y: u.z * v.x - u.x * v.z,
-        z: u.x * v.y - u.y * v.x
-      };
-    }
-
-function isFaceVisible(face, rotated) {
-  const [a, b, c] = face;
-  const p1 = rotated[a], p2 = rotated[b], p3 = rotated[c];
-  const u = {x: p2.x - p1.x, y: p2.y - p1.y, z: p2.z - p1.z};
-  const v = {x: p3.x - p1.x, y: p3.y - p1.y, z: p3.z - p1.z};
-  const normal = {
-    x: u.y * v.z - u.z * v.y,
-    y: u.z * v.x - u.x * v.z,
-    z: u.x * v.y - u.y * v.x
-  };
-  const view = {x: 0, y: 0, z: -1}; // camera menghadap -Z
-  const dot = normal.x * view.x + normal.y * view.y + normal.z * view.z;
-  return dot < 0; // hanya face yang menghadap ke depan
-}
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const rotated = points.map(p => rotate({...p}, angleX, angleY));
-  const projected = rotated.map(project);
-  const mode = modeSelect.value;
-
-  ctx.beginPath();
-
-  if (mode === "part1") {
-    // Gambar semua garis (wireframe)
-    for (let [a, b] of edges) {
-      const p1 = projected[a];
-      const p2 = projected[b];
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p2.x, p2.y);
-    }
-  } else {
-    // Gambar hanya sisi yang terlihat
-    const drawn = new Set();
-
-    for (let face of faces) {
-      if (isFaceVisible(face, rotated)) {
-        // Gambar semua sisi dari face yang terlihat
-        for (let i = 0; i < face.length; i++) {
-          const a = face[i];
-          const b = face[(i + 1) % face.length];
-          const key = `${Math.min(a, b)}-${Math.max(a, b)}`;
-          if (!drawn.has(key)) {
-            const p1 = projected[a];
-            const p2 = projected[b];
-            ctx.moveTo(p1.x, p1.y);
-            ctx.lineTo(p2.x, p2.y);
-            drawn.add(key);
-          }
-        }
-      }
-    }
-  }
-
-  ctx.strokeStyle = 'green';
-  ctx.stroke();
-}
-
-    document.addEventListener('keydown', e => {
-      if (e.key === 'a') angleY -= 0.1;
-      if (e.key === 'd') angleY += 0.1;
-      if (e.key === 'w') angleX -= 0.1;
-      if (e.key === 's') angleX += 0.1;
-      draw();
-    });
-
-    modeSelect.addEventListener('change', draw);
-
-    draw();
-  </script>
+  <script src="main.js"></script>
 </body>
 </html>

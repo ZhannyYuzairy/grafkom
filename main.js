@@ -1,75 +1,98 @@
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById('canvas'),
+      ctx = canvas.getContext('2d'),
+      W = canvas.width, H = canvas.height;
 
-let angleX = 0;
-let angleY = 0;
+let mode = 1, rotX = 0, rotY = 0;
 
-// Titik 3D kotak (bukan kubus) - ukuran bebas
-const points = [
-  {x: -100, y: -50, z: -50},
-  {x:  100, y: -50, z: -50},
-  {x:  100, y:  50, z: -50},
-  {x: -100, y:  50, z: -50},
-  {x: -100, y: -50, z:  50},
-  {x:  100, y: -50, z:  50},
-  {x:  100, y:  50, z:  50},
-  {x: -100, y:  50, z:  50},
+const nodes = [
+  [-1,-1,-1],[-1,-1,1],[-1,1,-1],[-1,1,1],
+  [1,-1,-1],[1,-1,1],[1,1,-1],[1,1,1]
 ];
-
-// Koneksi antar titik (index ke array `points`)
 const edges = [
-  [0,1],[1,2],[2,3],[3,0], // belakang
-  [4,5],[5,6],[6,7],[7,4], // depan
-  [0,4],[1,5],[2,6],[3,7], // samping
+  [0,1],[1,3],[3,2],[2,0],
+  [4,5],[5,7],[7,6],[6,4],
+  [0,4],[1,5],[2,6],[3,7]
+];
+const faces = [
+  [0,1,3,2],[4,5,7,6],
+  [0,1,5,4],[2,3,7,6],
+  [0,2,6,4],[1,3,7,5]
 ];
 
-function rotate(p, angleX, angleY) {
-  // rotasi sumbu Y
-  let x = p.x * Math.cos(angleY) - p.z * Math.sin(angleY);
-  let z = p.x * Math.sin(angleY) + p.z * Math.cos(angleY);
-  p.x = x;
-  p.z = z;
+function rotate([x, y, z]) {
+  const sx = Math.sin(rotX), cx = Math.cos(rotX);
+  const sy = Math.sin(rotY), cy = Math.cos(rotY);
 
-  // rotasi sumbu X
-  let y = p.y * Math.cos(angleX) - p.z * Math.sin(angleX);
-  z = p.y * Math.sin(angleX) + p.z * Math.cos(angleX);
-  p.y = y;
-  p.z = z;
+  const y2 = y * cx - z * sx;
+  const z2 = y * sx + z * cx;
+  const x2 = x * cy - z2 * sy;
+  const z3 = x * sy + z2 * cy;
 
-  return p;
+  return [x2, y2, z3];
 }
 
-function project(p) {
-  return {
-    x: p.x + canvas.width / 2,
-    y: -p.y + canvas.height / 2
-  };
+function project([x, y]) {
+  const s = 120;
+  return [x * s + W / 2, -y * s + H / 2];
+}
+
+function faceCentroidZ(face) {
+  let sumZ = 0;
+  for (const i of face) {
+    sumZ += rotate(nodes[i])[2];
+  }
+  return sumZ / face.length;
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, W, H);
+  const proj = nodes.map(n => project(rotate(n)));
+  const visFaces = faces.map(f => faceCentroidZ(f) < 0);
 
-  const rotated = points.map(p => rotate({...p}, angleX, angleY));
-  const projected = rotated.map(project);
-
-  ctx.beginPath();
-  for (let [a, b] of edges) {
-    const p1 = projected[a];
-    const p2 = projected[b];
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
+  for (const e of edges) {
+    if (mode === 2) {
+      let visible = faces.some((f, idx) =>
+        visFaces[idx] &&
+        f.includes(e[0]) &&
+        f.includes(e[1])
+      );
+      if (!visible) continue;
+    }
+    const [p, q] = [proj[e[0]], proj[e[1]]];
+    ctx.beginPath();
+    ctx.moveTo(...p);
+    ctx.lineTo(...q);
+    ctx.strokeStyle = '#006400';
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
-  ctx.strokeStyle = 'green';
-  ctx.stroke();
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'a') angleY -= 0.1;
-  if (e.key === 'd') angleY += 0.1;
-  if (e.key === 'w') angleX -= 0.1;
-  if (e.key === 's') angleX += 0.1;
+function animate() {
   draw();
+  requestAnimationFrame(animate);
+}
+animate();
+
+window.addEventListener('keydown', e => {
+  const stp = Math.PI / 90;
+  if (e.key.toLowerCase() === 'a') rotY -= stp;
+  if (e.key.toLowerCase() === 'd') rotY += stp;
+  if (e.key.toLowerCase() === 'w') rotX -= stp;
+  if (e.key.toLowerCase() === 's') rotX += stp;
 });
 
-// Gambar awal
-draw();
+document.getElementById('part1').addEventListener('click', () => {
+  mode = 1;
+  updateUI(1);
+});
+document.getElementById('part2').addEventListener('click', () => {
+  mode = 2;
+  updateUI(2);
+});
+
+function updateUI(active) {
+  document.querySelectorAll('#controls button').forEach(btn => {
+    btn.classList.toggle('active', btn.id === 'part' + active);
+  });
+}
