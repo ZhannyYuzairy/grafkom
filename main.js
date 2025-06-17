@@ -78,8 +78,8 @@ window.addEventListener('keydown', e => {
   const stp = Math.PI / 90;
   if (e.key.toLowerCase() === 'a') rotY -= stp;
   if (e.key.toLowerCase() === 'd') rotY += stp;
-  if (e.key.toLowerCase() === 'w') rotX -= stp;
-  if (e.key.toLowerCase() === 's') rotX += stp;
+  if (e.key.toLowerCase() === 'w') rotX += stp;
+  if (e.key.toLowerCase() === 's') rotX -= stp;
 });
 
 document.getElementById('part1').addEventListener('click', () => {
